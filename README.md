@@ -1,64 +1,128 @@
 ---
 page_type: sample
 languages:
-- csharp
+- python
 products:
-- dotnet
-description: "Add 150 character max description"
-urlFragment: "update-this-to-unique-url-stub"
+- azure
+- azure-netapp-files
+description: "This project demonstrates how to use a to perform management CRUD operations for Microsoft.NetApp resource provider using Python SDK."
 ---
 
-# Official Microsoft Sample
 
-<!-- 
-Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
+# Azure NetAppFiles SDK Sample for Python
 
-Guidance on onboarding samples to docs.microsoft.com/samples: https://review.docs.microsoft.com/help/onboard/admin/samples/process/onboarding?branch=master
+This project demonstrates how to perform management CRUD operations for Microsoft.NetApp resource provider using Python.
 
-Taxonomies for products and languages: https://review.docs.microsoft.com/new-hope/information-architecture/metadata/taxonomies?branch=master
--->
+In this sample application we perform the following operations:
 
-Give a short description for your sample here. What does it do and why is it important?
+* Creation
+  * NetApp Files Account
+  * Capacity Pool
+  * Volume
+  * Snapshot
+  * Volume from Snapshot
+* Updates
+  * Change a Capacity Pool size from 4TiB to 10TiB
+  * Change a Volume size from 100GiB to 1TiB
+  * Add a new NFS export policy to an existing volume
+* Deletions
+  * Snapshot
+  * Volumes
+  * Capacity Pools
+  * Accounts
 
-## Contents
-
-Outline the file contents of the repository. It helps users navigate the codebase, build configuration and any related assets.
-
-| File/folder       | Description                                |
-|-------------------|--------------------------------------------|
-| `src`             | Sample source code.                        |
-| `.gitignore`      | Define what to ignore at commit time.      |
-| `CHANGELOG.md`    | List of changes to the sample.             |
-| `CONTRIBUTING.md` | Guidelines for contributing to the sample. |
-| `README.md`       | This README file.                          |
-| `LICENSE`         | The license for the sample.                |
+If you don't already have a Microsoft Azure subscription, you can get a FREE trial account [here](http://go.microsoft.com/fwlink/?LinkId=330212).
 
 ## Prerequisites
 
-Outline the required components and tools that a user might need to have on their machine in order to run the sample. This can be anything from frameworks, SDKs, OS versions or IDE releases.
+1. Python (code was built and tested under 3.7.3 version)
+2. Azure Subscription
+1. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document.
+1. Resource Group created
+1. Virtual Network with a delegated subnet to Microsoft.Netapp/volumes resource. For more information, please refer to [Guidelines for Azure NetApp Files network planning](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-network-topologies)
+1. For this sample Python console appplication work, we need to authenticate and the method choosen for this sample is using service principals.
+   1. Within an [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart) session, make sure you're logged on at the subscription where you want to be associated with the service principal by default:
+            ```bash
+            az account show
+           ```
+             If this is not the correct subscription, use             
+             ```bash
+            az account set -s <subscription name or id>  
+            ```
+        1. Create a service principal using Azure CLI
+            ```bash
+            az ad sp create-for-rbac --sdk-auth
+            ```
 
-## Setup
+            >Note: this command will automatically assign RBAC contributor role to the service principal at subscription level, you can narrow down the scope to the specific resource group where your tests will create the resources.
 
-Explain how to prepare the sample once the user clones or downloads the repository. The section should outline every step necessary to install dependencies and set up any settings (for example, API keys and output folders).
+        1. Copy the output content and paste it in a file called azureauth.json and secure it with file system permissions
+        1. Set an environment variable pointing to the file path you just created, here is an example with Powershell and bash:
+            Powershell 
+            ```powershell
+           [Environment]::SetEnvironmentVariable("AZURE_AUTH_LOCATION", "C:\sdksample\azureauth.json", "User")
+            ```
+            Bash
+            ```bash
+           export AZURE_AUTH_LOCATION=/sdksamples/azureauth.json
+           ``` 
 
-## Runnning the sample
+        >Note: for other Azure Active Directory authentication methods for Python, please refer to these [samples](https://github.com/AzureAD/microsoft-authentication-library-for-python/tree/dev/sample). 
 
-Outline step-by-step instructions to execute the sample and see its output. Include steps for executing the sample from the IDE, starting specific services in the Azure portal or anything related to the overall launch of the code.
+# What is example.py doing? 
 
-## Key concepts
+Currently, Azure NetApp Files SDK exposes control plane management operations, CRUD operations for its resources like accounts, capacity pools, volumes and snapshots. We start this execution by defining some basic constants that will be used throughout the code to define resrouce group name, location, account name, etc.
 
-Provide users with more context on the tools and services used in the sample. Explain some of the code that is being used and how services interact with each other.
+>Note: Please refer to [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits) to understand ANF's most current limits.
 
-## Contributing
+Next, it will move forward to the authentication process, this sample uses `ServiceClientCredentials` (service principal based authentication) which is accepted by `AzureNetAppFilesManagementClient` to create the management client, that is extensively used throughout the code.
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+Then, it will start the CRUD operations by creating one account, then capacity pool, volume, snapshot and volume from snapshot, in this exact sequence \(for more information about Azure NetApp Files storage hierarchy please refer to [this](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-understand-storage-hierarchy) document\). After all resources are created, it will perform an update to a capacity pool by increasing its size; it will perform updates to a volume by changing its usage threshold (size) and adding an extra export policy. 
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+Finally, the clean up process takes place, deleting all resources in the reverse order following the hierarchy otherwise we can't remove resources that have nested resources still live. You will also note that the clean up process uses some wait_for_no_`<resource type>` functions, at this moment these are required so we can workaround a current ARM behaviour of reporting that the object was deleted when in fact its deletion is still in progress. We will also notice some functions called get_anf_`<resource type>`, these were also created in this sample to be able to get the name of the resource without its hierarchy represented in the `<resource type>.name` property, which cannot be used directly in other methods of Azure NetApp Files client like `get`. 
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+# Contents
+
+| File/folder                 | Description                                                                                                      |
+|-----------------------------|------------------------------------------------------------------------------------------------------------------|
+| `src`                       | Sample source code.                                                                                              |
+| `src\example.py`            | Sample main file.                                                                                                |
+| `src\sample_utils.py`       | Sample file that contains authentication functions, all wait functions and other small functions.                |
+| `src\resource_uri_utils.py` | Sample file that contains functions to work with URIs, e.g. get resource name from URI (`get_anf_capacitypool`). |
+| `src\requirements.txt       | Sample script required modules.                                                                                  |
+| `.gitignore`                | Define what to ignore at commit time.                                                                            |
+| `CHANGELOG.md`              | List of changes to the sample.                                                                                   |
+| `CONTRIBUTING.md`           | Guidelines for contributing to the sample.                                                                       |
+| `README.md`                 | This README file.                                                                                                |
+| `LICENSE`                   | The license for the sample.                                                                                      |
+| `CODE_OF_CONDUCT.md`        | Microsoft's Open Source Code of Conduct.                                                                         |
+
+# How to run the console application
+
+1. Clone it locally
+    ```powershell
+    git clone https://github.com/Azure-Samples/netappfiles-python-sdk-sample
+    ```
+1. Change folder to **.\netappfiles-dotnetcore-sdk-sample\src\anf-dotnetcore-sdk-sample**
+1. Make a copy of **anf-dotnetcore-sdk-sample\\_sample-appsettings.json** file, rename it to **appsettings.json** and modify its contents accordingly (at minimum, all values between **\<\>** must be replaced with real values), change the authentication section only if using Device Code flow authentication method.
+1. If using the default service principal authentication flow, make sure you have the azureauth.json and its environment variable with the path to it defined (as previously described)
+1. Build the console application
+    ```powershell
+    dotnet build
+    ```
+1. Run the console application
+    ```powershell
+    dotnet run
+    ```
+
+Sample output
+![e2e execution](./media/e2e-execution.png)
+
+# References
+
+* [Azure Active Directory Device Flow Authentication full sample](https://aka.ms/msal-net-device-code-flow)
+* [Authenticate with the Azure Libraries for .NET](https://docs.microsoft.com/en-us/dotnet/azure/dotnet-sdk-azure-authenticate?view=azure-dotnet)
+* [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits)
+* [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart)
+* [Azure NetApp Files documentation](https://docs.microsoft.com/en-us/azure/azure-netapp-files/)
+* [Download Azure SDKs](https://azure.microsoft.com/downloads/)
