@@ -71,7 +71,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 
 # What is example.py doing? 
 
-Currently, Azure NetApp Files SDK exposes control plane management operations, CRUD operations for its resources like accounts, capacity pools, volumes and snapshots. We start this execution by defining some basic constants that will be used throughout the code to define resrouce group name, location, account name, etc.
+Currently, Azure NetApp Files SDK exposes control plane management operations, CRUD operations for its resources like accounts, capacity pools, volumes and snapshots. We start this execution by defining some basic variables that will be used throughout the code to define resrouce group name, location, account name, etc.
 
 >Note: Please refer to [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits) to understand ANF's most current limits.
 
@@ -85,11 +85,12 @@ Finally, the clean up process takes place, deleting all resources in the reverse
 
 | File/folder                 | Description                                                                                                      |
 |-----------------------------|------------------------------------------------------------------------------------------------------------------|
-| `src`                       | Sample source code.                                                                                              |
+| `media\`                       | Folder that contains screenshots.                                                                                              |
+| `src\`                       | Sample source code folder.                                                                                              |
 | `src\example.py`            | Sample main file.                                                                                                |
 | `src\sample_utils.py`       | Sample file that contains authentication functions, all wait functions and other small functions.                |
 | `src\resource_uri_utils.py` | Sample file that contains functions to work with URIs, e.g. get resource name from URI (`get_anf_capacitypool`). |
-| `src\requirements.txt       | Sample script required modules.                                                                                  |
+| `src\requirements.txt`       | Sample script required modules.                                                                                  |
 | `.gitignore`                | Define what to ignore at commit time.                                                                            |
 | `CHANGELOG.md`              | List of changes to the sample.                                                                                   |
 | `CONTRIBUTING.md`           | Guidelines for contributing to the sample.                                                                       |
@@ -97,31 +98,26 @@ Finally, the clean up process takes place, deleting all resources in the reverse
 | `LICENSE`                   | The license for the sample.                                                                                      |
 | `CODE_OF_CONDUCT.md`        | Microsoft's Open Source Code of Conduct.                                                                         |
 
-# How to run the console application
+# How to run the script
 
 1. Clone it locally
     ```powershell
     git clone https://github.com/Azure-Samples/netappfiles-python-sdk-sample
     ```
-1. Change folder to **.\netappfiles-dotnetcore-sdk-sample\src\anf-dotnetcore-sdk-sample**
-1. Make a copy of **anf-dotnetcore-sdk-sample\\_sample-appsettings.json** file, rename it to **appsettings.json** and modify its contents accordingly (at minimum, all values between **\<\>** must be replaced with real values), change the authentication section only if using Device Code flow authentication method.
-1. If using the default service principal authentication flow, make sure you have the azureauth.json and its environment variable with the path to it defined (as previously described)
-1. Build the console application
+1. Change folder to **.\netappfiles-python-sdk-sample\src**
+3. Make sure you have the azureauth.json and its environment variable with the path to it defined (as previously describe in [prerequisites](#Prerequisites))
+1. Edit file **example.py** and change the variables contents as appropriate (names are self-explanatory).
+1. Run the script
     ```powershell
-    dotnet build
-    ```
-1. Run the console application
-    ```powershell
-    dotnet run
+    python ./example.py
     ```
 
 Sample output
-![e2e execution](./media/e2e-execution.png)
+![e2e execution](./media/e2e-Python.png)
 
 # References
 
-* [Azure Active Directory Device Flow Authentication full sample](https://aka.ms/msal-net-device-code-flow)
-* [Authenticate with the Azure Libraries for .NET](https://docs.microsoft.com/en-us/dotnet/azure/dotnet-sdk-azure-authenticate?view=azure-dotnet)
+* [Azure Active Directory Python Authentication samples](https://github.com/AzureAD/microsoft-authentication-library-for-python/tree/dev/sample)
 * [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits)
 * [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart)
 * [Azure NetApp Files documentation](https://docs.microsoft.com/en-us/azure/azure-netapp-files/)
