@@ -36,11 +36,11 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 ## Prerequisites
 
 1. Python (code was built and tested under 3.7.3 version)
-2. Azure Subscription
-1. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document.
-1. Resource Group created
-1. Virtual Network with a delegated subnet to Microsoft.Netapp/volumes resource. For more information, please refer to [Guidelines for Azure NetApp Files network planning](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-network-topologies)
-1. For this sample Python console appplication work, we need to authenticate and the method choosen for this sample is using service principals.
+3. Azure Subscription
+4. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document.
+5. Resource Group created
+6. Virtual Network with a delegated subnet to Microsoft.Netapp/volumes resource. For more information, please refer to [Guidelines for Azure NetApp Files network planning](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-network-topologies)
+7. For this sample Python console appplication work, we need to authenticate and the method choosen for this sample is using service principals.
    1. Within an [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart) session, make sure you're logged on at the subscription where you want to be associated with the service principal by default:
             ```bash
             az account show
@@ -56,8 +56,8 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 
             >Note: this command will automatically assign RBAC contributor role to the service principal at subscription level, you can narrow down the scope to the specific resource group where your tests will create the resources.
 
-        1. Copy the output content and paste it in a file called azureauth.json and secure it with file system permissions
-        1. Set an environment variable pointing to the file path you just created, here is an example with Powershell and bash:
+        2. Copy the output content and paste it in a file called azureauth.json and secure it with file system permissions
+        3. Set an environment variable pointing to the file path you just created, here is an example with Powershell and bash:
             Powershell 
             ```powershell
            [Environment]::SetEnvironmentVariable("AZURE_AUTH_LOCATION", "C:\sdksample\azureauth.json", "User")
@@ -105,9 +105,13 @@ Finally, the clean up process takes place, deleting all resources in the reverse
     git clone https://github.com/Azure-Samples/netappfiles-python-sdk-sample
     ```
 1. Change folder to **.\netappfiles-python-sdk-sample\src**
+2. Install any missing dependencies as needed
+    ```bash
+    pip install -r ./requirements.txt
+    ```
 3. Make sure you have the azureauth.json and its environment variable with the path to it defined (as previously describe in [prerequisites](#Prerequisites))
-1. Edit file **example.py** and change the variables contents as appropriate (names are self-explanatory).
-1. Run the script
+4. Edit file **example.py** and change the variables contents as appropriate (names are self-explanatory).
+5. Run the script
     ```powershell
     python ./example.py
     ```
