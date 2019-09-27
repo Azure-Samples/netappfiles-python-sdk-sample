@@ -69,7 +69,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 
         >Note: for other Azure Active Directory authentication methods for Python, please refer to these [samples](https://github.com/AzureAD/microsoft-authentication-library-for-python/tree/dev/sample). 
 
-# What is example.py doing? 
+## What is example.py doing? 
 
 Currently, Azure NetApp Files SDK exposes control plane management operations, CRUD operations for its resources like accounts, capacity pools, volumes and snapshots. We start this execution by defining some basic variables that will be used throughout the code to define resrouce group name, location, account name, etc.
 
@@ -81,7 +81,7 @@ Then, it will start the CRUD operations by creating one account, then capacity p
 
 Finally, the clean up process takes place, deleting all resources in the reverse order following the hierarchy otherwise we can't remove resources that have nested resources still live. You will also note that the clean up process uses some wait_for_no_`<resource type>` functions, at this moment these are required so we can workaround a current ARM behaviour of reporting that the object was deleted when in fact its deletion is still in progress. We will also notice some functions called get_anf_`<resource type>`, these were also created in this sample to be able to get the name of the resource without its hierarchy represented in the `<resource type>.name` property, which cannot be used directly in other methods of Azure NetApp Files client like `get`. 
 
-# Contents
+## Contents
 
 | File/folder                 | Description                                                                                                      |
 |-----------------------------|------------------------------------------------------------------------------------------------------------------|
@@ -98,7 +98,7 @@ Finally, the clean up process takes place, deleting all resources in the reverse
 | `LICENSE`                   | The license for the sample.                                                                                      |
 | `CODE_OF_CONDUCT.md`        | Microsoft's Open Source Code of Conduct.                                                                         |
 
-# How to run the script
+## How to run the script
 
 1. Clone it locally
     ```powershell
@@ -119,7 +119,7 @@ Finally, the clean up process takes place, deleting all resources in the reverse
 Sample output
 ![e2e execution](./media/e2e-Python.png)
 
-# References
+## References
 
 * [Azure Active Directory Python Authentication samples](https://github.com/AzureAD/microsoft-authentication-library-for-python/tree/dev/sample)
 * [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits)
