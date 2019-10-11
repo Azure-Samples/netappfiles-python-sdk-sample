@@ -10,7 +10,7 @@ import os
 import json
 import time
 from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.netapp import azure_net_app_files_management_client
+from azure.mgmt.netapp import AzureNetAppFilesManagementClient
 from datetime import datetime
 from msrestazure.azure_exceptions import CloudError
 
