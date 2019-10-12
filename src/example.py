@@ -6,23 +6,21 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import json
 import time
-import sys
 import sample_utils
 import resource_uri_utils
 import azure.mgmt.netapp.models
 from haikunator import Haikunator
 from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.netapp import azure_net_app_files_management_client
+from azure.mgmt.netapp import AzureNetAppFilesManagementClient
 from azure.mgmt.netapp.models import NetAppAccount, CapacityPool, Volume, Snapshot, CapacityPoolPatch, ExportPolicyRule, VolumePatchPropertiesExportPolicy, VolumePatch
-from datetime import datetime
 from msrestazure.azure_exceptions import CloudError
 from sample_utils import console_output
 
+SHOULD_CLEANUP = True
 LOCATION = 'eastus'
-RESOURCE_GROUP_NAME = 'anf01-rg'
-VNET_NAME = 'pmc-vnet-01'
+RESOURCE_GROUP_NAME = 'anf02-rg'
+VNET_NAME = 'vnet-01'
 SUBNET_NAME = 'anf-sn'
 VNET_RESOURCE_GROUP_NAME = 'anf01-rg'
 ANF_ACCOUNT_NAME = Haikunator().haikunate(delimiter='')
@@ -56,7 +54,8 @@ def create_volume(client, resource_group_name,  anf_account_name, capacitypool_n
         creation_token=volume_name,
         location=location,
         service_level=service_level,
-        subnet_id=subnet_id)
+        subnet_id=subnet_id,
+        protocol_types=["NFSv3"])
 
     return client.volumes.create_or_update(volume_body, resource_group_name, anf_account_name, capacitypool_name, volume_name).result()
 
@@ -91,7 +90,7 @@ def run_example():
     # Creating the Azure NetApp Files Client with an Application (service principal) token provider
     #
     credentials, subscription_id = sample_utils.get_credentials()
-    anf_client = azure_net_app_files_management_client.AzureNetAppFilesManagementClient(
+    anf_client = AzureNetAppFilesManagementClient(
         credentials, subscription_id)
 
     #
@@ -129,8 +128,8 @@ def run_example():
     #
     # Note: With exception of Accounts, all resources with Name property returns a relative path up to the name
     # and to use this property in other methods, like Get for example, the argument needs to be sanitized and just the
-    # actual name needs to be used (the hiearchy needs to be cleaned up in the name).
-    # Capacity Pool Name poperty example: "pmarques-anf01/pool01"
+    # actual name needs to be used (the hierarchy needs to be cleaned up in the name).
+    # Capacity Pool Name property example: "pmarques-anf01/pool01"
     # "pool01" is the actual name that needs to be used instead. Below you will see a sample function that
     # parses the name from its resource id: resource_uri_utils.get_anf_capacitypool()
     console_output('Creating a Volume ...')
@@ -225,7 +224,7 @@ def run_example():
             allowed_clients="10.0.0.4/32",
             cifs=False,
             nfsv3=True,
-            nfsv4=False,
+            nfsv41=False,
             rule_index=rule_list[0].rule_index + 1,
             unix_read_only=False,
             unix_read_write=True))
@@ -286,7 +285,7 @@ def run_example():
     console_output('\tGetting a single account...')
     try:
         retrieved_account = anf_client.accounts.get(
-            RESOURCE_GROUP_NAME, account_list[0].name)
+            RESOURCE_GROUP_NAME, account.name)
 
         console_output('\t\tAccount Name: {}, Id: {}'.format(
             retrieved_account.name, retrieved_account.id))
@@ -298,11 +297,11 @@ def run_example():
     # Capacity Pools
     # Getting a list of capacity pools from an account
     console_output('\tListing capacity pools from account {}...'.format(
-        account_list[0].name))
+        account.name))
     capacitypool_list = None
     try:
         capacitypool_list = list(anf_client.pools.list(
-            RESOURCE_GROUP_NAME, resource_uri_utils.get_anf_account(account_list[0].id)))
+            RESOURCE_GROUP_NAME, resource_uri_utils.get_anf_account(account.id)))
 
         for i, retrieved_pool in enumerate(capacitypool_list):
             console_output('\t\t{} - Capacity Pool Name: {}, Id: {}'.format(i,
@@ -318,8 +317,8 @@ def run_example():
     try:
         retrieved_pool = anf_client.pools.get(RESOURCE_GROUP_NAME,
                                               resource_uri_utils.get_anf_account(
-                                                  account_list[0].id),
-                                              resource_uri_utils.get_anf_capacitypool(capacitypool_list[0].id))
+                                                  account.id),
+                                              resource_uri_utils.get_anf_capacitypool(capacity_pool.id))
 
         console_output('\t\tCapacity Pool Name: {}, Id: {}'.format(
             retrieved_pool.name, retrieved_pool.id))
@@ -331,13 +330,13 @@ def run_example():
     # Volumes
     # Getting a list of volumes from a capacity pool
     console_output('\tListing volumes from capacity pool {}...'.format(
-        capacitypool_list[0].name))
+        capacity_pool.name))
     volume_list = None
     try:
         volume_list = list(anf_client.volumes.list(RESOURCE_GROUP_NAME,
                                                    resource_uri_utils.get_anf_account(
-                                                       account_list[0].id),
-                                                   resource_uri_utils.get_anf_capacitypool(capacitypool_list[0].id)))
+                                                       account.id),
+                                                   resource_uri_utils.get_anf_capacitypool(capacity_pool.id)))
 
         for i, retrieved_volume in enumerate(volume_list):
             console_output('\t\t{} - Volume Name: {}, Id: {}'.format(i,
@@ -353,10 +352,10 @@ def run_example():
     try:
         retrieved_volume = anf_client.volumes.get(RESOURCE_GROUP_NAME,
                                                   resource_uri_utils.get_anf_account(
-                                                      account_list[0].id),
+                                                      account.id),
                                                   resource_uri_utils.get_anf_capacitypool(
-                                                      capacitypool_list[0].id),
-                                                  resource_uri_utils.get_anf_volume(volume_list[0].id))
+                                                      capacity_pool.id),
+                                                  resource_uri_utils.get_anf_volume(volume.id))
 
         console_output('\t\tVolume Name: {}, Id: {}'.format(
             retrieved_volume.name, retrieved_volume.id))
@@ -368,15 +367,15 @@ def run_example():
     # Snapshots
     # Getting a list of snapshots from volume
     console_output(
-        '\tListing snapshots from from volume {}...'.format(volume_list[0].name))
+        '\tListing snapshots from from volume {}...'.format(volume.name))
     snapshot_list = None
     try:
         snapshot_list = list(anf_client.snapshots.list(RESOURCE_GROUP_NAME,
                                                        resource_uri_utils.get_anf_account(
-                                                           account_list[0].id),
+                                                           account.id),
                                                        resource_uri_utils.get_anf_capacitypool(
-                                                           capacitypool_list[0].id),
-                                                       resource_uri_utils.get_anf_volume(volume_list[0].id)))
+                                                           capacity_pool.id),
+                                                       resource_uri_utils.get_anf_volume(volume.id)))
 
         for i, retrieved_snapshot in enumerate(snapshot_list):
             console_output('\t\t{} - Snapshot Name: {}, Id: {}'.format(i,
@@ -387,17 +386,17 @@ def run_example():
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
 
-    # Getting a single snaoshot
+    # Getting a single snapshot
     console_output('\tGetting a single snapshot...')
     try:
         retrieved_snapshot = anf_client.snapshots.get(RESOURCE_GROUP_NAME,
                                                       resource_uri_utils.get_anf_account(
-                                                          account_list[0].id),
+                                                          account.id),
                                                       resource_uri_utils.get_anf_capacitypool(
-                                                          capacitypool_list[0].id),
+                                                          capacity_pool.id),
                                                       resource_uri_utils.get_anf_volume(
-                                                          volume_list[0].id),
-                                                      resource_uri_utils.get_anf_snapshot(snapshot_list[0].id))
+                                                          volume.id),
+                                                      resource_uri_utils.get_anf_snapshot(snapshot.id))
 
         console_output('\t\tSnapshot Name: {}, Id: {}'.format(
             retrieved_snapshot.name, retrieved_snapshot.id))
@@ -410,97 +409,98 @@ def run_example():
     # Cleaning up. This process needs to start the cleanup from the innermost resources down in the hierarchy chain
     # in our case Snapshots->Volumes->Capacity Pools->Accounts
     #
-    console_output('Cleaning up...')
+    if SHOULD_CLEANUP:
+        console_output('Cleaning up...')
 
-    # Cleaning up snapshot
-    console_output(
-        "\tWaiting for 1 minute to let the snapshot used to create a new volume to complete the split operation therefore not being locked...")
-    time.sleep(60)
-    console_output("\tDeleting Snapshot {}...".format(
-        resource_uri_utils.get_anf_snapshot(snapshot.id)))
-
-    try:
-        anf_client.snapshots.delete(RESOURCE_GROUP_NAME,
-                                    account.name,
-                                    resource_uri_utils.get_anf_capacitypool(
-                                        capacity_pool.id),
-                                    resource_uri_utils.get_anf_volume(
-                                        volume.id),
-                                    resource_uri_utils.get_anf_snapshot(snapshot.id)).wait()
-
-        # ARM Workaround to wait the deletion complete/propagate
-        sample_utils.wait_for_no_snapshot(anf_client,
-                                          RESOURCE_GROUP_NAME,
-                                          account.name,
-                                          resource_uri_utils.get_anf_capacitypool(
-                                              capacity_pool.id),
-                                          resource_uri_utils.get_anf_volume(
-                                              volume.id),
-                                          resource_uri_utils.get_anf_snapshot(snapshot.id))
-
-        console_output('\t\tDeleted Snapshot: {}'.format(snapshot.id))
-    except CloudError as ex:
+        # Cleaning up snapshot
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
-        raise
+            "\tWaiting for 1 minute to let the snapshot used to create a new volume to complete the split operation therefore not being locked...")
+        time.sleep(60)
+        console_output("\tDeleting Snapshot {}...".format(
+            resource_uri_utils.get_anf_snapshot(snapshot.id)))
 
-    # Cleaning up volumes
-    # Note: Volume deletion operations at the RP level are executed serially
-    console_output("\tDeleting Volumes...")
-    try:
-        volume_ids = [volume.id, volume_from_snapshot.id]
-        for volume_id in volume_ids:
-            console_output("\t\tDeleting {}".format(volume_id))
-            anf_client.volumes.delete(RESOURCE_GROUP_NAME,
-                                      account.name,
-                                      resource_uri_utils.get_anf_capacitypool(
-                                          capacity_pool.id),
-                                      resource_uri_utils.get_anf_volume(volume_id)).wait()
+        try:
+            anf_client.snapshots.delete(RESOURCE_GROUP_NAME,
+                                        account.name,
+                                        resource_uri_utils.get_anf_capacitypool(
+                                            capacity_pool.id),
+                                        resource_uri_utils.get_anf_volume(
+                                            volume.id),
+                                        resource_uri_utils.get_anf_snapshot(snapshot.id)).wait()
 
             # ARM Workaround to wait the deletion complete/propagate
-            sample_utils.wait_for_no_volume(anf_client,
+            sample_utils.wait_for_no_snapshot(anf_client,
                                             RESOURCE_GROUP_NAME,
                                             account.name,
                                             resource_uri_utils.get_anf_capacitypool(
                                                 capacity_pool.id),
-                                            resource_uri_utils.get_anf_volume(volume_id))
+                                            resource_uri_utils.get_anf_volume(
+                                                volume.id),
+                                            resource_uri_utils.get_anf_snapshot(snapshot.id))
 
-            console_output('\t\tDeleted Volume: {}'.format(volume_id))
-    except CloudError as ex:
-        console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
-        raise
+            console_output('\t\tDeleted Snapshot: {}'.format(snapshot.id))
+        except CloudError as ex:
+            console_output(
+                'An error ocurred. Error details: {}'.format(ex.message))
+            raise
 
-    # Cleaning up Capacity Pool
-    console_output("\tDeleting Capacity Pool {} ...".format(
-        resource_uri_utils.get_anf_capacitypool(capacity_pool.id)))
-    try:
-        anf_client.pools.delete(RESOURCE_GROUP_NAME,
-                                account.name,
-                                resource_uri_utils.get_anf_capacitypool(capacity_pool.id)).wait()
+        # Cleaning up volumes
+        # Note: Volume deletion operations at the RP level are executed serially
+        console_output("\tDeleting Volumes...")
+        try:
+            volume_ids = [volume.id, volume_from_snapshot.id]
+            for volume_id in volume_ids:
+                console_output("\t\tDeleting {}".format(volume_id))
+                anf_client.volumes.delete(RESOURCE_GROUP_NAME,
+                                        account.name,
+                                        resource_uri_utils.get_anf_capacitypool(
+                                            capacity_pool.id),
+                                        resource_uri_utils.get_anf_volume(volume_id)).wait()
 
-        # ARM Workaround to wait the deletion complete/propagate
-        sample_utils.wait_for_no_pool(anf_client,
-                                      RESOURCE_GROUP_NAME,
-                                      account.name,
-                                      resource_uri_utils.get_anf_capacitypool(capacity_pool.id))
+                # ARM Workaround to wait the deletion complete/propagate
+                sample_utils.wait_for_no_volume(anf_client,
+                                                RESOURCE_GROUP_NAME,
+                                                account.name,
+                                                resource_uri_utils.get_anf_capacitypool(
+                                                    capacity_pool.id),
+                                                resource_uri_utils.get_anf_volume(volume_id))
 
-        console_output(
-            '\t\tDeleted Capacity Pool: {}'.format(capacity_pool.id))
-    except CloudError as ex:
-        console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
-        raise
+                console_output('\t\tDeleted Volume: {}'.format(volume_id))
+        except CloudError as ex:
+            console_output(
+                'An error ocurred. Error details: {}'.format(ex.message))
+            raise
 
-    # Cleaning up Account
-    console_output("\tDeleting Account {} ...".format(account.name))
-    try:
-        anf_client.accounts.delete(RESOURCE_GROUP_NAME, account.name)
-        console_output('\t\tDeleted Account: {}'.format(account.id))
-    except CloudError as ex:
-        console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
-        raise
+        # Cleaning up Capacity Pool
+        console_output("\tDeleting Capacity Pool {} ...".format(
+            resource_uri_utils.get_anf_capacitypool(capacity_pool.id)))
+        try:
+            anf_client.pools.delete(RESOURCE_GROUP_NAME,
+                                    account.name,
+                                    resource_uri_utils.get_anf_capacitypool(capacity_pool.id)).wait()
+
+            # ARM Workaround to wait the deletion complete/propagate
+            sample_utils.wait_for_no_pool(anf_client,
+                                        RESOURCE_GROUP_NAME,
+                                        account.name,
+                                        resource_uri_utils.get_anf_capacitypool(capacity_pool.id))
+
+            console_output(
+                '\t\tDeleted Capacity Pool: {}'.format(capacity_pool.id))
+        except CloudError as ex:
+            console_output(
+                'An error ocurred. Error details: {}'.format(ex.message))
+            raise
+
+        # Cleaning up Account
+        console_output("\tDeleting Account {} ...".format(account.name))
+        try:
+            anf_client.accounts.delete(RESOURCE_GROUP_NAME, account.name)
+            console_output('\t\tDeleted Account: {}'.format(account.id))
+        except CloudError as ex:
+            console_output(
+                'An error ocurred. Error details: {}'.format(ex.message))
+            raise
 
 
 # This script expects that the following environment var are set:
