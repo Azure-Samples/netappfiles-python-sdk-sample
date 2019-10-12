@@ -17,10 +17,10 @@ from azure.mgmt.netapp.models import NetAppAccount, CapacityPool, Volume, Snapsh
 from msrestazure.azure_exceptions import CloudError
 from sample_utils import console_output
 
-SHOULD_CLEANUP = False
+SHOULD_CLEANUP = True
 LOCATION = 'eastus'
-RESOURCE_GROUP_NAME = 'anf01-rg'
-VNET_NAME = 'pmc-vnet-01'
+RESOURCE_GROUP_NAME = 'anf02-rg'
+VNET_NAME = 'vnet-01'
 SUBNET_NAME = 'anf-sn'
 VNET_RESOURCE_GROUP_NAME = 'anf01-rg'
 ANF_ACCOUNT_NAME = Haikunator().haikunate(delimiter='')
@@ -224,7 +224,7 @@ def run_example():
             allowed_clients="10.0.0.4/32",
             cifs=False,
             nfsv3=True,
-            nfsv4=False,
+            nfsv41=False,
             rule_index=rule_list[0].rule_index + 1,
             unix_read_only=False,
             unix_read_write=True))
@@ -285,7 +285,7 @@ def run_example():
     console_output('\tGetting a single account...')
     try:
         retrieved_account = anf_client.accounts.get(
-            RESOURCE_GROUP_NAME, account_list[0].name)
+            RESOURCE_GROUP_NAME, account.name)
 
         console_output('\t\tAccount Name: {}, Id: {}'.format(
             retrieved_account.name, retrieved_account.id))
@@ -297,11 +297,11 @@ def run_example():
     # Capacity Pools
     # Getting a list of capacity pools from an account
     console_output('\tListing capacity pools from account {}...'.format(
-        account_list[0].name))
+        account.name))
     capacitypool_list = None
     try:
         capacitypool_list = list(anf_client.pools.list(
-            RESOURCE_GROUP_NAME, resource_uri_utils.get_anf_account(account_list[0].id)))
+            RESOURCE_GROUP_NAME, resource_uri_utils.get_anf_account(account.id)))
 
         for i, retrieved_pool in enumerate(capacitypool_list):
             console_output('\t\t{} - Capacity Pool Name: {}, Id: {}'.format(i,
@@ -317,8 +317,8 @@ def run_example():
     try:
         retrieved_pool = anf_client.pools.get(RESOURCE_GROUP_NAME,
                                               resource_uri_utils.get_anf_account(
-                                                  account_list[0].id),
-                                              resource_uri_utils.get_anf_capacitypool(capacitypool_list[0].id))
+                                                  account.id),
+                                              resource_uri_utils.get_anf_capacitypool(capacity_pool.id))
 
         console_output('\t\tCapacity Pool Name: {}, Id: {}'.format(
             retrieved_pool.name, retrieved_pool.id))
@@ -330,13 +330,13 @@ def run_example():
     # Volumes
     # Getting a list of volumes from a capacity pool
     console_output('\tListing volumes from capacity pool {}...'.format(
-        capacitypool_list[0].name))
+        capacity_pool.name))
     volume_list = None
     try:
         volume_list = list(anf_client.volumes.list(RESOURCE_GROUP_NAME,
                                                    resource_uri_utils.get_anf_account(
-                                                       account_list[0].id),
-                                                   resource_uri_utils.get_anf_capacitypool(capacitypool_list[0].id)))
+                                                       account.id),
+                                                   resource_uri_utils.get_anf_capacitypool(capacity_pool.id)))
 
         for i, retrieved_volume in enumerate(volume_list):
             console_output('\t\t{} - Volume Name: {}, Id: {}'.format(i,
@@ -352,10 +352,10 @@ def run_example():
     try:
         retrieved_volume = anf_client.volumes.get(RESOURCE_GROUP_NAME,
                                                   resource_uri_utils.get_anf_account(
-                                                      account_list[0].id),
+                                                      account.id),
                                                   resource_uri_utils.get_anf_capacitypool(
-                                                      capacitypool_list[0].id),
-                                                  resource_uri_utils.get_anf_volume(volume_list[0].id))
+                                                      capacity_pool.id),
+                                                  resource_uri_utils.get_anf_volume(volume.id))
 
         console_output('\t\tVolume Name: {}, Id: {}'.format(
             retrieved_volume.name, retrieved_volume.id))
@@ -367,15 +367,15 @@ def run_example():
     # Snapshots
     # Getting a list of snapshots from volume
     console_output(
-        '\tListing snapshots from from volume {}...'.format(volume_list[0].name))
+        '\tListing snapshots from from volume {}...'.format(volume.name))
     snapshot_list = None
     try:
         snapshot_list = list(anf_client.snapshots.list(RESOURCE_GROUP_NAME,
                                                        resource_uri_utils.get_anf_account(
-                                                           account_list[0].id),
+                                                           account.id),
                                                        resource_uri_utils.get_anf_capacitypool(
-                                                           capacitypool_list[0].id),
-                                                       resource_uri_utils.get_anf_volume(volume_list[0].id)))
+                                                           capacity_pool.id),
+                                                       resource_uri_utils.get_anf_volume(volume.id)))
 
         for i, retrieved_snapshot in enumerate(snapshot_list):
             console_output('\t\t{} - Snapshot Name: {}, Id: {}'.format(i,
@@ -391,12 +391,12 @@ def run_example():
     try:
         retrieved_snapshot = anf_client.snapshots.get(RESOURCE_GROUP_NAME,
                                                       resource_uri_utils.get_anf_account(
-                                                          account_list[0].id),
+                                                          account.id),
                                                       resource_uri_utils.get_anf_capacitypool(
-                                                          capacitypool_list[0].id),
+                                                          capacity_pool.id),
                                                       resource_uri_utils.get_anf_volume(
-                                                          volume_list[0].id),
-                                                      resource_uri_utils.get_anf_snapshot(snapshot_list[0].id))
+                                                          volume.id),
+                                                      resource_uri_utils.get_anf_snapshot(snapshot.id))
 
         console_output('\t\tSnapshot Name: {}, Id: {}'.format(
             retrieved_snapshot.name, retrieved_snapshot.id))
