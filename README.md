@@ -40,7 +40,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 4. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document.
 5. Resource Group created
 6. Virtual Network with a delegated subnet to Microsoft.Netapp/volumes resource. For more information, please refer to [Guidelines for Azure NetApp Files network planning](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-network-topologies)
-7. For this sample Python console appplication work, we need to authenticate and the method choosen for this sample is using service principals.
+7. For this sample Python console application work, we need to authenticate and the method choosen for this sample is using service principals.
    1. Within an [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart) session, make sure you're logged on at the subscription where you want to be associated with the service principal by default:
             ```bash
             az account show
