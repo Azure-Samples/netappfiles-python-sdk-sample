@@ -9,16 +9,18 @@ import sys
 import os
 import json
 import time
+import resource_uri_utils
 from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.netapp import azure_net_app_files_management_client
+from azure.mgmt.netapp import AzureNetAppFilesManagementClient
 from datetime import datetime
 from msrestazure.azure_exceptions import CloudError
+
 
 def get_credentials():
     credential_file = os.environ.get('AZURE_AUTH_LOCATION')
 
     with open(credential_file) as credential_file_contents:
-        credential_info = json.load(credential_file_contents) 
+        credential_info = json.load(credential_file_contents)
 
     subscription_id = credential_info['subscriptionId']
 
@@ -42,109 +44,73 @@ def get_tib_in_bytes(size):
     return size * 1024 * 1024 * 1024 * 1024
 
 
-def wait_for_no_account(client, resource_group_name, anf_account_name):
-    co=0
-    while co<5:
-        time.sleep(10)
-        co += 1
+def wait_for_no_anf_resource(client, resourceId, intervalInSec=10, retries=60):
+    for i in range(0, retries):
+        time.sleep(intervalInSec)
         try:
-            client.accounts.get(resource_group_name, anf_account_name)
-            console_output('\t\t{} - Account {} still found, retrying wait...'.format(sys._getframe().f_code.co_name, anf_account_name))
+            if resource_uri_utils.is_anf_snapshot(resourceId):
+                client.snapshots.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId),
+                    resource_uri_utils.get_anf_capacity_pool(resourceId),
+                    resource_uri_utils.get_anf_volume(resourceId),
+                    resource_uri_utils.get_anf_snapshot(resourceId)
+                )
+            elif resource_uri_utils.is_anf_volume(resourceId):
+                client.volumes.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId),
+                    resource_uri_utils.get_anf_capacity_pool(resourceId),
+                    resource_uri_utils.get_anf_volume(resourceId)
+                )
+            elif resource_uri_utils.is_anf_capacity_pool(resourceId):
+                client.pools.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId),
+                    resource_uri_utils.get_anf_capacity_pool(resourceId)
+                )
+            elif resource_uri_utils.is_anf_account(resourceId):
+                client.accounts.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId)
+                )
         except CloudError as ex:
-            console_output('\t\t{} - Account {} not found, exting wait...'.format(sys._getframe().f_code.co_name, anf_account_name))
             break
 
 
-def wait_for_account(client, resource_group_name, anf_account_name):
-    co=0
-    while co<5:
-        time.sleep(10)
-        co += 1
+def wait_for_anf_resource(client, resourceId, intervalInSec=10, retries=60):
+    for i in range(0, retries):
+        time.sleep(intervalInSec)
         try:
-            client.accounts.get(resource_group_name, anf_account_name)
-            console_output('\t\t{} - Account {} found, exiting wait...'.format(sys._getframe().f_code.co_name, anf_account_name))
-            break
+            if resource_uri_utils.is_anf_snapshot(resourceId):
+                client.snapshots.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId),
+                    resource_uri_utils.get_anf_capacity_pool(resourceId),
+                    resource_uri_utils.get_anf_volume(resourceId),
+                    resource_uri_utils.get_anf_snapshot(resourceId)
+                )
+                break
+            elif resource_uri_utils.is_anf_volume(resourceId):
+                client.volumes.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId),
+                    resource_uri_utils.get_anf_capacity_pool(resourceId),
+                    resource_uri_utils.get_anf_volume(resourceId)
+                )
+                break
+            elif resource_uri_utils.is_anf_capacity_pool(resourceId):
+                client.pools.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId),
+                    resource_uri_utils.get_anf_capacity_pool(resourceId)
+                )
+                break
+            elif resource_uri_utils.is_anf_account(resourceId):
+                client.accounts.get(
+                    resource_uri_utils.get_resource_group(resourceId),
+                    resource_uri_utils.get_anf_account(resourceId)
+                )
+                break
         except CloudError as ex:
-            console_output('\t\t{} - Account {} not found, retrying wait...'.format(sys._getframe().f_code.co_name, anf_account_name))
             pass
-
-
-def wait_for_pool(client, resource_group_name, anf_account_name, capacitypool_name):
-    co=0
-    while co<10:
-        time.sleep(10)
-        co += 1
-        try:
-            client.pools.get(resource_group_name, anf_account_name, capacitypool_name)
-            console_output('\t\t{} - Capacity Pool {} found, exiting wait...'.format(sys._getframe().f_code.co_name, capacitypool_name))
-            break
-        except CloudError as ex:
-            console_output('\t\t{} - Capacity Pool {} not found, retrying wait...'.format(sys._getframe().f_code.co_name, capacitypool_name))
-            pass
-
-
-def wait_for_no_pool(client, resource_group_name, anf_account_name, capacitypool_name):
-    co=0
-    while co<10:
-        time.sleep(10)
-        co += 1
-        try:
-            client.pools.get(resource_group_name, anf_account_name, capacitypool_name)
-            console_output('\t\t{} - Capacity Pool {} still found, retrying wait...'.format(sys._getframe().f_code.co_name, capacitypool_name))
-        except CloudError as ex:
-            console_output('\t\t{} - Capacity Pool {} not found, exiting wait...'.format(sys._getframe().f_code.co_name, capacitypool_name))
-            break
-
-
-def wait_for_volume(client, resource_group_name, anf_account_name, capacitypool_name, volume_name):
-    co=0
-    while co<10:
-        time.sleep(20)
-        co += 1
-        try:
-            client.volumes.get(resource_group_name, anf_account_name, capacitypool_name, volume_name)
-            console_output('\t\t{} - Volume {} found, exiting wait...'.format(sys._getframe().f_code.co_name, volume_name))
-            break
-        except CloudError as ex:
-            console_output('\t\t{} - Volume {} not found, retrying wait...'.format(sys._getframe().f_code.co_name, volume_name))
-            pass
-
-
-def wait_for_no_volume(client, resource_group_name, anf_account_name, capacitypool_name, volume_name):
-    co=0
-    while co<10:
-        time.sleep(20)
-        co += 1
-        try:
-            client.volumes.get(resource_group_name, anf_account_name, capacitypool_name, volume_name)
-            console_output('\t\t{} - Volume {} still found, retrying wait...'.format(sys._getframe().f_code.co_name, volume_name))
-        except CloudError as ex:
-            console_output('\t\t{} - Volume {} not found, exiting wait...'.format(sys._getframe().f_code.co_name, volume_name))
-            break
-
-
-def wait_for_snapshot(client, resource_group_name, anf_account_name, capacitypool_name, volume_name, snapshot_name):
-    co=0
-    while co<10:
-        time.sleep(10)
-        co += 1
-        try:
-            client.snapshots.get(resource_group_name, anf_account_name, capacitypool_name, volume_name, snapshot_name)
-            console_output('\t\t{} - Snapshot {} found, exiting wait...'.format(sys._getframe().f_code.co_name, snapshot_name))
-            break
-        except CloudError as ex:
-            console_output('\t\t{} - Snapshot {} not found, retrying wait...'.format(sys._getframe().f_code.co_name, snapshot_name))
-            pass
-
-
-def wait_for_no_snapshot(client, resource_group_name, anf_account_name, capacitypool_name, volume_name, snapshot_name):
-    co=0
-    while co<10:
-        time.sleep(10)
-        co += 1
-        try:
-            client.snapshots.get(resource_group_name, anf_account_name, capacitypool_name, volume_name, snapshot_name)
-            console_output('\t\t{} - Snapshot {} still found, retrying wait...'.format(sys._getframe().f_code.co_name, snapshot_name))
-        except CloudError as ex:
-            console_output('\t\t{} - Snapshot {} not found, exiting wait...'.format(sys._getframe().f_code.co_name, snapshot_name))
-            break

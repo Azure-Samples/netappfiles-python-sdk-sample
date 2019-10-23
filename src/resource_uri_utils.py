@@ -5,6 +5,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 def get_resource_value(resource_uri, resource_name):
     if not resource_uri.strip():
         return None
@@ -15,11 +16,14 @@ def get_resource_value(resource_uri, resource_name):
     if not resource_uri.startswith('/'):
         resource_uri = '/{}'.format(resource_uri)
 
-    # Checks to see if the ResourceName and ResourceGroup is the same name and if so handles it specially. 
+    # Checks to see if the ResourceName and ResourceGroup is the same name and
+    # if so handles it specially.
     rg_resource_name = '/resourceGroups{}'.format(resource_name)
     rg_index = resource_uri.lower().find(rg_resource_name.lower())
-    if rg_index > -1: # dealing with case where resource name is the same as resource group
-        removed_same_rg_name = resource_uri.lower().split(resource_name.lower())[-1]
+    # dealing with case where resource name is the same as resource group
+    if rg_index > -1:
+        removed_same_rg_name = resource_uri.lower().split(
+            resource_name.lower())[-1]
         return removed_same_rg_name.split('/')[1]
 
     index = resource_uri.lower().find(resource_name.lower())
@@ -29,6 +33,7 @@ def get_resource_value(resource_uri, resource_name):
             return res[1]
 
     return None
+
 
 def get_resource_name(resource_uri):
     if not resource_uri.strip():
@@ -59,7 +64,7 @@ def get_anf_account(resource_uri):
     return get_resource_value(resource_uri, '/netAppAccounts')
 
 
-def get_anf_capacitypool(resource_uri):
+def get_anf_capacity_pool(resource_uri):
     if not resource_uri.strip():
         return None
 
@@ -79,8 +84,44 @@ def get_anf_snapshot(resource_uri):
 
     return get_resource_value(resource_uri, '/snapshots')
 
+
 def is_anf_resource(resource_uri):
     if not resource_uri.strip():
         return None
 
     return resource_uri.find('/providers/Microsoft.NetApp/netAppAccounts') > -1
+
+
+def is_anf_snapshot(resource_uri):
+    if not resource_uri.strip():
+        return None
+
+    return resource_uri.rfind('/snapshots/') > -1
+
+
+def is_anf_volume(resource_uri):
+    if not resource_uri.strip():
+        return None
+
+    return (resource_uri.rfind('/snapshots/') == -1) \
+        and (resource_uri.rfind('/volumes/') > -1)
+
+
+def is_anf_capacity_pool(resource_uri):
+    if not resource_uri.strip():
+        return None
+
+    return (resource_uri.rfind('/snapshots/') == -1) \
+        and (resource_uri.rfind('/volumes/') == -1) \
+        and (resource_uri.rfind('/capacityPools/') > -1)
+
+
+def is_anf_account(resource_uri):
+    if not resource_uri.strip():
+        return None
+
+    return (resource_uri.rfind('/snapshots/') == -1) \
+        and (resource_uri.rfind('/volumes/') == -1) \
+        and (resource_uri.rfind('/capacityPools/') == -1) \
+        and (resource_uri.rfind('/backupPolicies/') == -1) \
+        and (resource_uri.rfind('/netAppAccounts/') > -1)
