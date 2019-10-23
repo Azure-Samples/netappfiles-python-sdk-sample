@@ -89,7 +89,7 @@ Finally, the clean up process takes place, deleting all resources in the reverse
 | `src\`                       | Sample source code folder.                                                                                              |
 | `src\example.py`            | Sample main file.                                                                                                |
 | `src\sample_utils.py`       | Sample file that contains authentication functions, all wait functions and other small functions.                |
-| `src\resource_uri_utils.py` | Sample file that contains functions to work with URIs, e.g. get resource name from URI (`get_anf_capacitypool`). |
+| `src\resource_uri_utils.py` | Sample file that contains functions to work with URIs, e.g. get resource name from URI (`get_anf_capacity_pool`). |
 | `src\requirements.txt`       | Sample script required modules.                                                                                  |
 | `.gitignore`                | Define what to ignore at commit time.                                                                            |
 | `CHANGELOG.md`              | List of changes to the sample.                                                                                   |
