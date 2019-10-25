@@ -24,7 +24,7 @@ from azure.mgmt.netapp.models import NetAppAccount, \
 from msrestazure.azure_exceptions import CloudError
 from sample_utils import console_output
 
-SHOULD_CLEANUP = True
+SHOULD_CLEANUP = False
 LOCATION = 'eastus2'
 RESOURCE_GROUP_NAME = 'anf01-rg'
 VNET_NAME = 'vnet-02'
