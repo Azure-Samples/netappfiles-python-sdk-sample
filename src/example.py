@@ -24,7 +24,8 @@ from azure.mgmt.netapp.models import NetAppAccount, \
 from msrestazure.azure_exceptions import CloudError
 from sample_utils import console_output
 
-SHOULD_CLEANUP = False
+# Variables to be changed to be in accordance to the environment where this sample will be executed
+SHOULD_CLEANUP = True
 LOCATION = 'eastus2'
 RESOURCE_GROUP_NAME = 'anf01-rg'
 VNET_NAME = 'vnet-02'
@@ -42,6 +43,26 @@ VOLUME_FROM_SNAPSHOT_NAME = 'Vol-{}'.format(SNAPSHOT_NAME)
 
 def create_account(client, resource_group_name, anf_account_name,
                    location, tags=None, active_directories=None):
+    """Creates an Azure NetApp Files Account
+
+    Function that creates an Azure NetApp Account, which requires building the
+    account body object first.
+
+    Args:
+        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+            Client designed to interact with ANF resources
+        resource_group_name (string): Name of the resource group where the
+            account will be created
+        location (string): Azure short name of the region where resource will
+            be deployed
+        tags (object): Optional. Key-value pairs to tag the resource, default
+            value is None. E.g. {'cc':'1234','dept':'IT'}
+        active_directories (list[ActiveDirectory]): Optional. List of
+            ActiveDirectories objects
+
+    Returns:
+        NetAppAccount: Returns the newly created NetAppAccount resource
+    """
 
     account_body = NetAppAccount(location=location, tags=tags)
 
@@ -53,6 +74,32 @@ def create_account(client, resource_group_name, anf_account_name,
 def create_capacitypool_async(client, resource_group_name,
                               anf_account_name, capacitypool_name,
                               service_level, size, location, tags=None):
+    """Creates a capacity pool within an account
+
+    Function that creates a Capacity Pool, capacity pools are needed to define
+    maximum service level and capacity.
+
+    Args:
+        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+            Client designed to interact with ANF resources
+        resource_group_name (string): Name of the resource group where the
+            capacity pool will be created, it needs to be the same as the
+            Account
+        anf_account_name (string): Name of the Azure NetApp Files Account where
+            the capacity pool will be created
+        capacitypool_name (string): Capacity pool name
+        service_level (string): Desired service level for this new capacity
+            pool, valid values are "Ultra","Premium","Standard"
+        size (long): Capacity pool size, values range from 4398046511104
+            (4TiB) to 549755813888000 (500TiB)
+        location (string): Azure short name of the region where resource will
+            be deployed, needs to be the same as the account
+        tags (object): Optional. Key-value pairs to tag the resource, default
+            value is None. E.g. {'cc':'1234','dept':'IT'}
+
+    Returns:
+        CapacityPool: Returns the newly created capacity pool resource
+    """
 
     capacitypool_body = CapacityPool(
         location=location,
@@ -68,6 +115,37 @@ def create_capacitypool_async(client, resource_group_name,
 def create_volume(client, resource_group_name, anf_account_name,
                   capacitypool_name, volume_name, volume_usage_quota,
                   service_level, subnet_id, location, tags=None):
+    """Creates a volume within a capacity pool
+
+    Function that in this example creates a NFSv3 volume within a capacity
+    pool, as a note service level needs to be the same as the capacity pool.
+    This function also defines the volume body as the configuration settings
+    of the new volume.
+
+    Args:
+        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+            Client designed to interact with ANF resources
+        resource_group_name (string): Name of the resource group where the
+            volume will be created, it needs to be the same as the account
+        anf_account_name (string): Name of the Azure NetApp Files Account where
+            the capacity pool holding the volume exists
+        capacitypool_name (string): Capacity pool name where volume will be
+            created
+        volume_name (string): Volume name
+        volume_usage_quota (long): Volume size in bytes, minimum value is
+            107374182400 (100GiB), maximum value is 109951162777600 (100TiB)
+        service_level (string): Volume service level, needs to be the same as
+            the capacity pool, valid values are "Ultra","Premium","Standard"
+        subnet_id (string): Subnet resource id of the delegated to ANF Volumes
+            subnet
+        location (string): Azure short name of the region where resource will
+            be deployed, needs to be the same as the account
+        tags (object): Optional. Key-value pairs to tag the resource, default
+            value is None. E.g. {'cc':'1234','dept':'IT'}
+
+    Returns:
+        Volume: Returns the newly created volume resource
+    """
 
     volume_body = Volume(
         usage_threshold=volume_usage_quota,
@@ -87,6 +165,31 @@ def create_volume(client, resource_group_name, anf_account_name,
 def create_volume_from_snapshot(client, resource_group_name, anf_account_name,
                                 capacitypool_name, volume, snapshot_id,
                                 volume_name, tags=None):
+    """Creates a volume from a snapshot
+
+    Function that creates a volume from an existing snapshot. This example use
+    the previous created volume that had a snapshot taken to gather some
+    important information to create a new volume from the snapshot, noted in
+    the volume_body object.
+
+    Args:
+        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+            Client designed to interact with ANF resources
+        resource_group_name (string): Name of the resource group where the
+            volume will be created, it needs to be the same as the account
+        anf_account_name (string): Name of the Azure NetApp Files Account
+            where the capacity pool holding the volume exists
+        capacitypool_name (string): Capacity pool name where volume will be
+            created
+        volume (Volume): Original volume object where the snapshot was taken
+        snapshot_id (string): UUID v4 name of the snapshot
+        tags (object): Optional. Key-value pairs to tag the resource, default
+            value is None. E.g. {'cc':'1234','dept':'IT'}
+
+    Returns:
+        Volume: Returns the newly created volume resource
+    """
+
 
     volume_body = Volume(
         snapshot_id=snapshot_id,
@@ -108,6 +211,29 @@ def create_volume_from_snapshot(client, resource_group_name, anf_account_name,
 def create_snapshot(client, resource_group_name, anf_account_name,
                     capacitypool_name, volume_name, snapshot_name,
                     location, tags=None):
+    """Creates a volume snapshot
+
+    Function that creates a volume snapshot.
+
+    Args:
+        client (AzureNetAppFilesManagementClient): Azure Resource Provider 
+            Client designed to interact with ANF resources
+        resource_group_name (string): Name of the resource group where the
+            snapshot will be created, it needs to be the same as the account
+        anf_account_name (string): Name of the Azure NetApp Files Account where
+            the capacity pool holding the volume exists
+        capacitypool_name (string): Capacity pool name where volume to be taken
+            the snapshot exists
+        volume_name (string): Name of the volume to take the snapshot
+        snapshot_name (string): Snapshot name
+        location (string): Azure short name of the region where resource will
+            be deployed, needs to be the same as the account
+        tags (object): Optional. Key-value pairs to tag the resource, default
+            value is None. E.g. {'cc':'1234','dept':'IT'}
+
+    Returns:
+        Snapshot: Returns the newly created snapshot resource
+    """
 
     snapshot_body = Snapshot(location=location)
 
