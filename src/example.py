@@ -42,7 +42,7 @@ VOLUME_FROM_SNAPSHOT_NAME = 'Vol-{}'.format(SNAPSHOT_NAME)
 
 
 def create_account(client, resource_group_name, anf_account_name,
-                   location, tags=None, active_directories=None):
+                   location, tags=None):
     """Creates an Azure NetApp Files Account
 
     Function that creates an Azure NetApp Account, which requires building the
@@ -57,8 +57,6 @@ def create_account(client, resource_group_name, anf_account_name,
             be deployed
         tags (object): Optional. Key-value pairs to tag the resource, default
             value is None. E.g. {'cc':'1234','dept':'IT'}
-        active_directories (list[ActiveDirectory]): Optional. List of
-            ActiveDirectories objects
 
     Returns:
         NetAppAccount: Returns the newly created NetAppAccount resource
@@ -104,7 +102,8 @@ def create_capacitypool_async(client, resource_group_name,
     capacitypool_body = CapacityPool(
         location=location,
         service_level=service_level,
-        size=size)
+        size=size,
+        tags=tags)
 
     return client.pools.create_or_update(capacitypool_body,
                                          resource_group_name,
@@ -153,7 +152,8 @@ def create_volume(client, resource_group_name, anf_account_name,
         location=location,
         service_level=service_level,
         subnet_id=subnet_id,
-        protocol_types=["NFSv3"])
+        protocol_types=["NFSv3"],
+        tags=tags)
 
     return client.volumes.create_or_update(volume_body,
                                            resource_group_name,
@@ -199,7 +199,8 @@ def create_volume_from_snapshot(client, resource_group_name, anf_account_name,
         location=volume.location,
         service_level=volume.service_level,
         subnet_id=volume.subnet_id,
-        protocol_types=volume.protocol_types)
+        protocol_types=volume.protocol_types,
+        tags=tags)
 
     return client.volumes.create_or_update(volume_body,
                                            resource_group_name,
@@ -235,7 +236,8 @@ def create_snapshot(client, resource_group_name, anf_account_name,
         Snapshot: Returns the newly created snapshot resource
     """
 
-    snapshot_body = Snapshot(location=location)
+    snapshot_body = Snapshot(location=location,
+        tags=tags)
 
     return client.snapshots.create(snapshot_body,
                                    resource_group_name,

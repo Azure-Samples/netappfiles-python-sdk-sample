@@ -230,7 +230,11 @@ def is_anf_volume(resource_uri):
     if (not resource_uri.strip()) or (not is_anf_resource(resource_uri)):
         return False
 
-    return (resource_uri.rfind('/snapshots/') == -1) \
+    # return (resource_uri.rfind('/snapshots/') == -1) \
+    #     and (resource_uri.rfind('/volumes/') > -1)
+
+        
+    return (not is_anf_snapshot(resource_uri)) \
         and (resource_uri.rfind('/volumes/') > -1)
 
 
@@ -250,8 +254,8 @@ def is_anf_capacity_pool(resource_uri):
     if (not resource_uri.strip()) or (not is_anf_resource(resource_uri)):
         return False
 
-    return (resource_uri.rfind('/snapshots/') == -1) \
-        and (resource_uri.rfind('/volumes/') == -1) \
+    return (not is_anf_snapshot(resource_uri)) \
+        and (not is_anf_volume(resource_uri)) \
         and (resource_uri.rfind('/capacityPools/') > -1)
 
 
@@ -271,8 +275,8 @@ def is_anf_account(resource_uri):
     if (not resource_uri.strip()) or (not is_anf_resource(resource_uri)):
         return False
 
-    return (resource_uri.rfind('/snapshots/') == -1) \
-        and (resource_uri.rfind('/volumes/') == -1) \
-        and (resource_uri.rfind('/capacityPools/') == -1) \
+    return (not is_anf_snapshot(resource_uri)) \
+        and (not is_anf_volume(resource_uri)) \
+        and (not is_anf_capacity_pool(resource_uri)) \
         and (resource_uri.rfind('/backupPolicies/') == -1) \
         and (resource_uri.rfind('/netAppAccounts/') > -1)
