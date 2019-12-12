@@ -21,11 +21,12 @@ from azure.mgmt.netapp.models import NetAppAccount, \
     ExportPolicyRule, \
     VolumePatchPropertiesExportPolicy, \
     VolumePatch
+from azure.mgmt.resource import ResourceManagementClient
 from msrestazure.azure_exceptions import CloudError
-from sample_utils import console_output
+from sample_utils import console_output, print_header, resource_exists
 
 # Variables to be changed to be in accordance to the environment where this sample will be executed
-SHOULD_CLEANUP = True
+SHOULD_CLEANUP = False
 LOCATION = 'eastus2'
 RESOURCE_GROUP_NAME = 'anf01-rg'
 VNET_NAME = 'vnet-02'
@@ -40,6 +41,8 @@ VOLUME_USAGE_QUOTA = 107374182400  # 100GiB
 SNAPSHOT_NAME = 'Snapshot-{}'.format(VOLUME_NAME)
 VOLUME_FROM_SNAPSHOT_NAME = 'Vol-{}'.format(SNAPSHOT_NAME)
 
+# Resource SDK related (change only if API version is not supported anymore)
+VIRTUAL_NETWORKS_SUBNET_API_VERSION = '2018-11-01'
 
 def create_account(client, resource_group_name, anf_account_name,
                    location, tags=None):
@@ -250,15 +253,31 @@ def create_snapshot(client, resource_group_name, anf_account_name,
 def run_example():
     """Azure NetApp Files SDK management example."""
 
-    print("Azure NetAppFiles Python SDK Sample")
-    print("Sample project that performs CRUD management operations with Azure NetApp Files SDK with Python")
-    print("-----------------------------------------------------------------------------------------------")
+    print_header("Azure NetAppFiles Python SDK Sample - Sample "
+        "project that performs CRUD management operations with Azure "
+        "NetApp Files SDK with Python")
 
     # Creating the Azure NetApp Files Client with an Application
     # (service principal) token provider
     credentials, subscription_id = sample_utils.get_credentials()
     anf_client = AzureNetAppFilesManagementClient(
         credentials, subscription_id)
+
+    # Checking if vnet/subnet information leads to a valid resource
+    resources_client = ResourceManagementClient(credentials, subscription_id)
+    SUBNET_ID = '/subscriptions/{}/resourceGroups/{}/providers/Microsoft.Network/virtualNetworks/{}/subnets/{}'.format(
+        subscription_id, VNET_RESOURCE_GROUP_NAME, VNET_NAME, SUBNET_NAME)
+
+    result = resource_exists(resources_client, 
+        SUBNET_ID, 
+        VIRTUAL_NETWORKS_SUBNET_API_VERSION)
+
+    if not result:
+        console_output("ERROR: Subnet not with id {} not found".format(
+            SUBNET_ID))
+        raise Exception("Subnet not found error. Subnet Id {}".format(
+            SUBNET_ID))
+
 
     # Creating an Azure NetApp Account
     console_output('Creating Azure NetApp Files account ...')

@@ -15,6 +15,10 @@ from azure.mgmt.netapp import AzureNetAppFilesManagementClient
 from datetime import datetime
 from msrestazure.azure_exceptions import CloudError
 
+def print_header(header_string):
+    print(header_string)
+    print('-' * len(header_string))
+
 
 def get_credentials():
     """Gets the file system secured secret
@@ -24,7 +28,7 @@ def get_credentials():
 
     Returns:
         ServicePrincipalCredentials: Returns the Service Principal Credential object
-        string: Returns the subscription id associated by defaul to the service principal
+        string: Returns the subscription id associated by default to the service principal
     """
 
     credential_file = os.environ.get('AZURE_AUTH_LOCATION')
@@ -180,3 +184,28 @@ def wait_for_anf_resource(client, resource_id, interval_in_sec=10, retries=60):
                 break
         except CloudError as ex:
             pass
+
+
+def resource_exists(resource_client, resource_id, api_version):
+    """Generic function to check for existing Azure function
+
+    This function checks if a specific Azure resource exists based on its
+    resource Id.
+
+    Args:
+        client (ResourceManagementClient): Azure Resource Manager Client
+        resource_id (string): Resource Id of the resource to be checked upon
+        api_version (string): Resource provider specific API version
+    """
+
+    try:
+        return resource_client.resources.check_existence_by_id(resource_id, api_version)
+    except CloudError as e:
+        if e.status_code == 405: # HEAD not supported
+            try:
+                resource_client.resources.get_by_id(resource_id, api_version)
+                return True
+            except CloudError as ie:
+                if ie.status_code == 404:
+                    return False
+        raise # If not 405 or 404, not expected
