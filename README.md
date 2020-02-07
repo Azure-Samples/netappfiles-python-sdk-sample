@@ -40,7 +40,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 4. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document.
 5. Resource Group created
 6. Virtual Network with a delegated subnet to Microsoft.Netapp/volumes resource. For more information, please refer to [Guidelines for Azure NetApp Files network planning](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-network-topologies)
-7. For this sample Python console application work, we need to authenticate and the method choosen for this sample is using service principals.
+7. For this sample Python console application work, we need to authenticate and the chosen method for this sample is using service principals.
    1. Within an [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart) session, make sure you're logged on at the subscription where you want to be associated with the service principal by default:
             ```bash
             az account show
@@ -71,7 +71,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 
 ## What is example.py doing? 
 
-Currently, Azure NetApp Files SDK exposes control plane management operations, CRUD operations for its resources like accounts, capacity pools, volumes and snapshots. We start this execution by defining some basic variables that will be used throughout the code to define resrouce group name, location, account name, etc.
+Currently, Azure NetApp Files SDK exposes control plane management operations, CRUD operations for its resources like accounts, capacity pools, volumes and snapshots. We start this execution by defining some basic variables that will be used throughout the code to define resource group name, location, account name, etc.
 
 >Note: Please refer to [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits) to understand ANF's most current limits.
 
@@ -109,7 +109,7 @@ Finally, the clean up process takes place (not enabled by default, please change
     ```bash
     pip install -r ./requirements.txt
     ```
-3. Make sure you have the azureauth.json and its environment variable with the path to it defined (as previously describe in [prerequisites](#Prerequisites))
+3. Make sure you have the azureauth.json and its environment variable with the path to it defined (as previously described at [prerequisites](#Prerequisites))
 4. Edit file **example.py** and change the variables contents as appropriate (names are self-explanatory).
 5. Run the script
     ```powershell
