@@ -232,8 +232,6 @@ def create_snapshot(client, resource_group_name, anf_account_name,
         snapshot_name (string): Snapshot name
         location (string): Azure short name of the region where resource will
             be deployed, needs to be the same as the account
-        tags (object): Optional. Key-value pairs to tag the resource, default
-            value is None. E.g. {'cc':'1234','dept':'IT'}
 
     Returns:
         Snapshot: Returns the newly created snapshot resource
