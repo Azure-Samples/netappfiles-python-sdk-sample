@@ -11,8 +11,9 @@ import sample_utils
 import resource_uri_utils
 import azure.mgmt.netapp.models
 from haikunator import Haikunator
-from azure.common.credentials import ServicePrincipalCredentials
-from azure.mgmt.netapp import AzureNetAppFilesManagementClient
+from azure.core.exceptions import AzureError
+from azure.identity import ClientSecretCredential
+from azure.mgmt.netapp import NetAppManagementClient
 from azure.mgmt.netapp.models import NetAppAccount, \
     CapacityPool, \
     Volume, \
@@ -22,7 +23,6 @@ from azure.mgmt.netapp.models import NetAppAccount, \
     VolumePatchPropertiesExportPolicy, \
     VolumePatch
 from azure.mgmt.resource import ResourceManagementClient
-from msrestazure.azure_exceptions import CloudError
 from sample_utils import console_output, print_header, resource_exists
 
 # Variables to be changed to be in accordance to the environment where this sample will be executed
@@ -52,7 +52,7 @@ def create_account(client, resource_group_name, anf_account_name,
     account body object first.
 
     Args:
-        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+        client (NetAppManagementClient): Azure Resource Provider
             Client designed to interact with ANF resources
         resource_group_name (string): Name of the resource group where the
             account will be created
@@ -67,9 +67,9 @@ def create_account(client, resource_group_name, anf_account_name,
 
     account_body = NetAppAccount(location=location, tags=tags)
 
-    return client.accounts.create_or_update(account_body,
-                                            resource_group_name,
-                                            anf_account_name).result()
+    return client.accounts.begin_create_or_update(resource_group_name,
+                                            anf_account_name,
+                                            account_body).result()
 
 
 def create_capacitypool_async(client, resource_group_name,
@@ -81,7 +81,7 @@ def create_capacitypool_async(client, resource_group_name,
     maximum service level and capacity.
 
     Args:
-        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+        client (NetAppManagementClient): Azure Resource Provider
             Client designed to interact with ANF resources
         resource_group_name (string): Name of the resource group where the
             capacity pool will be created, it needs to be the same as the
@@ -108,10 +108,10 @@ def create_capacitypool_async(client, resource_group_name,
         size=size,
         tags=tags)
 
-    return client.pools.create_or_update(capacitypool_body,
-                                         resource_group_name,
-                                         anf_account_name,
-                                         capacitypool_name).result()
+    return client.pools.begin_create_or_update(resource_group_name, 
+                                               anf_account_name,  
+                                               capacitypool_name,
+                                               capacitypool_body).result()
 
 
 def create_volume(client, resource_group_name, anf_account_name,
@@ -125,7 +125,7 @@ def create_volume(client, resource_group_name, anf_account_name,
     of the new volume.
 
     Args:
-        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+        client (NetAppManagementClient): Azure Resource Provider
             Client designed to interact with ANF resources
         resource_group_name (string): Name of the resource group where the
             volume will be created, it needs to be the same as the account
@@ -158,11 +158,11 @@ def create_volume(client, resource_group_name, anf_account_name,
         protocol_types=["NFSv3"],
         tags=tags)
 
-    return client.volumes.create_or_update(volume_body,
-                                           resource_group_name,
+    return client.volumes.begin_create_or_update(resource_group_name,
                                            anf_account_name,
                                            capacitypool_name,
-                                           volume_name).result()
+                                           volume_name,
+                                           volume_body).result()
 
 
 def create_volume_from_snapshot(client, resource_group_name, anf_account_name,
@@ -176,7 +176,7 @@ def create_volume_from_snapshot(client, resource_group_name, anf_account_name,
     the volume_body object.
 
     Args:
-        client (AzureNetAppFilesManagementClient): Azure Resource Provider
+        client (NetAppManagementClient): Azure Resource Provider
             Client designed to interact with ANF resources
         resource_group_name (string): Name of the resource group where the
             volume will be created, it needs to be the same as the account
@@ -205,22 +205,22 @@ def create_volume_from_snapshot(client, resource_group_name, anf_account_name,
         protocol_types=volume.protocol_types,
         tags=tags)
 
-    return client.volumes.create_or_update(volume_body,
-                                           resource_group_name,
+    return client.volumes.begin_create_or_update(resource_group_name,
                                            anf_account_name,
                                            capacitypool_name,
-                                           volume_name).result()
+                                           volume_name,
+                                           volume_body).result()
 
 
 def create_snapshot(client, resource_group_name, anf_account_name,
                     capacitypool_name, volume_name, snapshot_name,
-                    location, tags=None):
+                    location):
     """Creates a volume snapshot
 
     Function that creates a volume snapshot.
 
     Args:
-        client (AzureNetAppFilesManagementClient): Azure Resource Provider 
+        client (NetAppManagementClient): Azure Resource Provider 
             Client designed to interact with ANF resources
         resource_group_name (string): Name of the resource group where the
             snapshot will be created, it needs to be the same as the account
@@ -232,22 +232,19 @@ def create_snapshot(client, resource_group_name, anf_account_name,
         snapshot_name (string): Snapshot name
         location (string): Azure short name of the region where resource will
             be deployed, needs to be the same as the account
-        tags (object): Optional. Key-value pairs to tag the resource, default
-            value is None. E.g. {'cc':'1234','dept':'IT'}
 
     Returns:
         Snapshot: Returns the newly created snapshot resource
     """
 
-    snapshot_body = Snapshot(location=location,
-        tags=tags)
+    snapshot_body = Snapshot(location=location)
 
-    return client.snapshots.create(snapshot_body,
-                                   resource_group_name,
+    return client.snapshots.begin_create(resource_group_name,
                                    anf_account_name,
                                    capacitypool_name,
                                    volume_name,
-                                   snapshot_name).result()
+                                   snapshot_name,
+                                   snapshot_body).result()
 
 
 def run_example():
@@ -260,7 +257,7 @@ def run_example():
     # Creating the Azure NetApp Files Client with an Application
     # (service principal) token provider
     credentials, subscription_id = sample_utils.get_credentials()
-    anf_client = AzureNetAppFilesManagementClient(
+    anf_client = NetAppManagementClient(
         credentials, subscription_id)
 
     # Checking if vnet/subnet information leads to a valid resource
@@ -288,7 +285,7 @@ def run_example():
         console_output(
             '\tAccount successfully created, resource id: {}'.format(
                 account.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -307,7 +304,7 @@ def run_example():
 
         console_output('\tCapacity Pool successfully created, resource id: {}'
                        .format(capacity_pool.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -344,7 +341,7 @@ def run_example():
 
         console_output('\tVolume successfully created, resource id: {}'
                        .format(volume.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -368,7 +365,7 @@ def run_example():
         console_output(
             '\tSnapshot successfully created, resource id: {}'
             .format(snapshot.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -394,7 +391,7 @@ def run_example():
 
         console_output('\tNew volume from snapshot successfully created, resource id: {}'.format(
             volume_from_snapshot.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -407,17 +404,16 @@ def run_example():
         new_capacity_pool_size_tib))
     try:
         capacity_pool_patch = CapacityPoolPatch(location=capacity_pool.location,
-                                                service_level=capacity_pool.service_level,
                                                 size=sample_utils.get_tib_in_bytes(new_capacity_pool_size_tib))
 
-        capacity_pool = anf_client.pools.update(capacity_pool_patch,
-                                                RESOURCE_GROUP_NAME,
+        capacity_pool = anf_client.pools.begin_update(RESOURCE_GROUP_NAME,
                                                 account.name,
-                                                resource_uri_utils.get_anf_capacity_pool(capacity_pool.id))
+                                                resource_uri_utils.get_anf_capacity_pool(capacity_pool.id),
+                                                capacity_pool_patch).result()
 
         console_output('\t\tCapacity Pool successfully updated, new size {}TiB, resource id: {}'.format(
             sample_utils.get_bytes_in_tib(capacity_pool.size), capacity_pool.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -459,18 +455,18 @@ def run_example():
             export_policy=export_policies_patch)
 
     try:
-        updated_volume = anf_client.volumes.update(volume_patch,
-                                                   RESOURCE_GROUP_NAME,
+        updated_volume = anf_client.volumes.begin_update(RESOURCE_GROUP_NAME,
                                                    account.name,
                                                    resource_uri_utils.get_anf_capacity_pool(
                                                        capacity_pool.id),
-                                                   resource_uri_utils.get_anf_volume(volume.id))
+                                                   resource_uri_utils.get_anf_volume(volume.id),
+                                                   volume_patch).result()
 
         console_output('\t\tVolume successfully updated, new size: {}TiB, export policy count: {}, resource id: {}'
                        .format(sample_utils.get_bytes_in_tib(updated_volume.usage_threshold),
                                len(updated_volume.export_policy.rules),
                                updated_volume.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -490,7 +486,7 @@ def run_example():
                            .format(i,
                                    retrieved_account.name,
                                    retrieved_account.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -503,7 +499,7 @@ def run_example():
 
         console_output('\t\tAccount Name: {}, Id: {}'.format(
             retrieved_account.name, retrieved_account.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -523,7 +519,7 @@ def run_example():
                                    retrieved_pool.name,
                                    retrieved_pool.id))
 
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -538,7 +534,7 @@ def run_example():
 
         console_output('\t\tCapacity Pool Name: {}, Id: {}'.format(
             retrieved_pool.name, retrieved_pool.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -560,7 +556,7 @@ def run_example():
                                    retrieved_volume.name,
                                    retrieved_volume.id))
 
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -577,7 +573,7 @@ def run_example():
 
         console_output('\t\tVolume Name: {}, Id: {}'.format(
             retrieved_volume.name, retrieved_volume.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -601,7 +597,7 @@ def run_example():
                                    retrieved_snapshot.name,
                                    retrieved_snapshot.id))
 
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -620,7 +616,7 @@ def run_example():
 
         console_output('\t\tSnapshot Name: {}, Id: {}'.format(
             retrieved_snapshot.name, retrieved_snapshot.id))
-    except CloudError as ex:
+    except AzureError as ex:
         console_output(
             'An error ocurred. Error details: {}'.format(ex.message))
         raise
@@ -640,7 +636,7 @@ def run_example():
             resource_uri_utils.get_anf_snapshot(snapshot.id)))
 
         try:
-            anf_client.snapshots.delete(RESOURCE_GROUP_NAME,
+            anf_client.snapshots.begin_delete(RESOURCE_GROUP_NAME,
                                         account.name,
                                         resource_uri_utils.get_anf_capacity_pool(
                                             capacity_pool.id),
@@ -652,7 +648,7 @@ def run_example():
             sample_utils.wait_for_no_anf_resource(anf_client, snapshot.id)
 
             console_output('\t\tDeleted Snapshot: {}'.format(snapshot.id))
-        except CloudError as ex:
+        except AzureError as ex:
             console_output(
                 'An error ocurred. Error details: {}'.format(ex.message))
             raise
@@ -665,7 +661,7 @@ def run_example():
             volume_ids = [volume.id, volume_from_snapshot.id]
             for volume_id in volume_ids:
                 console_output("\t\tDeleting {}".format(volume_id))
-                anf_client.volumes.delete(RESOURCE_GROUP_NAME,
+                anf_client.volumes.begin_delete(RESOURCE_GROUP_NAME,
                                           account.name,
                                           resource_uri_utils.get_anf_capacity_pool(
                                              capacity_pool.id),
@@ -674,7 +670,7 @@ def run_example():
                 sample_utils.wait_for_no_anf_resource(anf_client, volume_id)
 
                 console_output('\t\tDeleted Volume: {}'.format(volume_id))
-        except CloudError as ex:
+        except AzureError as ex:
             console_output(
                 'An error ocurred. Error details: {}'.format(ex.message))
             raise
@@ -683,7 +679,7 @@ def run_example():
         console_output("\tDeleting Capacity Pool {} ...".format(
             resource_uri_utils.get_anf_capacity_pool(capacity_pool.id)))
         try:
-            anf_client.pools.delete(RESOURCE_GROUP_NAME,
+            anf_client.pools.begin_delete(RESOURCE_GROUP_NAME,
                                     account.name,
                                     resource_uri_utils.get_anf_capacity_pool(
                                         capacity_pool.id)).wait()
@@ -692,7 +688,7 @@ def run_example():
 
             console_output(
                 '\t\tDeleted Capacity Pool: {}'.format(capacity_pool.id))
-        except CloudError as ex:
+        except AzureError as ex:
             console_output(
                 'An error ocurred. Error details: {}'.format(ex.message))
             raise
@@ -700,10 +696,10 @@ def run_example():
         # Cleaning up Account
         console_output("\tDeleting Account {} ...".format(account.name))
         try:
-            anf_client.accounts.delete(RESOURCE_GROUP_NAME, account.name)
+            anf_client.accounts.begin_delete(RESOURCE_GROUP_NAME, account.name)
             sample_utils.wait_for_no_anf_resource(anf_client, account.id)
             console_output('\t\tDeleted Account: {}'.format(account.id))
-        except CloudError as ex:
+        except AzureError as ex:
             console_output(
                 'An error ocurred. Error details: {}'.format(ex.message))
             raise

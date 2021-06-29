@@ -35,7 +35,7 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 
 ## Prerequisites
 
-1. Python (code was built and tested under 3.7.3 version)
+1. Python (code was built and tested under 3.9.5 version)
 3. Azure Subscription
 4. Subscription needs to be whitelisted for Azure NetApp Files. For more information, please refer to [this](https://docs.microsoft.com/azure/azure-netapp-files/azure-netapp-files-register#waitlist) document.
 5. Resource Group created
@@ -75,7 +75,7 @@ Currently, Azure NetApp Files SDK exposes control plane management operations, C
 
 >Note: Please refer to [Resource limits for Azure NetApp Files](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-resource-limits) to understand ANF's most current limits.
 
-Next, it will move forward to the authentication process, this sample uses `ServiceClientCredentials` (service principal based authentication) which is accepted by `AzureNetAppFilesManagementClient` to create the management client, that is extensively used throughout the code.
+Next, it will move forward to the authentication process, this sample uses `ClientSecretCredential` (service principal based authentication) which is accepted by `NetAppManagementClient` to create the management client, that is extensively used throughout the code.
 
 Then, it will start the CRUD operations by creating one account, then capacity pool, volume, snapshot and volume from snapshot, in this exact sequence \(for more information about Azure NetApp Files storage hierarchy please refer to [this](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-understand-storage-hierarchy) document\). After all resources are created, it will perform an update to a capacity pool by increasing its size; it will perform updates to a volume by changing its usage threshold (size) and adding an extra export policy.
 
