@@ -1,4 +1,5 @@
-azure-mgmt-netapp==3.0.0
+azure-mgmt-netapp==14.0.1
 azure-mgmt-resource==18.0.0
 azure-identity==1.16.1
 haikunator
+six
