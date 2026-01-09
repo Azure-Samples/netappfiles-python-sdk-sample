@@ -12,7 +12,8 @@ import resource_uri_utils
 import azure.mgmt.netapp.models
 from haikunator import Haikunator
 from azure.core.exceptions import AzureError
-from azure.identity import ClientSecretCredential
+# from azure.identity import ClientSecretCredential
+from azure.identity import DefaultAzureCredential
 from azure.mgmt.netapp import NetAppManagementClient
 from azure.mgmt.netapp.models import NetAppAccount, \
     CapacityPool, \
@@ -21,12 +22,16 @@ from azure.mgmt.netapp.models import NetAppAccount, \
     CapacityPoolPatch, \
     ExportPolicyRule, \
     VolumePatchPropertiesExportPolicy, \
-    VolumePatch
+    VolumePatch, \
+    PoolPatchProperties, \
+    VolumePatchProperties
 from azure.mgmt.resource import ResourceManagementClient
 from sample_utils import console_output, print_header, resource_exists
 
 # Variables to be changed to be in accordance to the environment where this sample will be executed
 SHOULD_CLEANUP = False
+#SUBSCRIPTION_ID = 'your-subscription-id'
+SUBSCRIPTION_ID = '69a75bda-882e-44d5-8431-63421204132a'
 LOCATION = 'eastus2'
 RESOURCE_GROUP_NAME = 'anf01-rg'
 VNET_NAME = 'vnet-02'
@@ -108,8 +113,8 @@ def create_capacitypool_async(client, resource_group_name,
         size=size,
         tags=tags)
 
-    return client.pools.begin_create_or_update(resource_group_name, 
-                                               anf_account_name,  
+    return client.pools.begin_create_or_update(resource_group_name,
+                                               anf_account_name,
                                                capacitypool_name,
                                                capacitypool_body).result()
 
@@ -220,7 +225,7 @@ def create_snapshot(client, resource_group_name, anf_account_name,
     Function that creates a volume snapshot.
 
     Args:
-        client (NetAppManagementClient): Azure Resource Provider 
+        client (NetAppManagementClient): Azure Resource Provider
             Client designed to interact with ANF resources
         resource_group_name (string): Name of the resource group where the
             snapshot will be created, it needs to be the same as the account
@@ -256,7 +261,13 @@ def run_example():
 
     # Creating the Azure NetApp Files Client with an Application
     # (service principal) token provider
+    # # For other authentication approaches, please see: https://pypi.org/project/azure-identity/
     credentials, subscription_id = sample_utils.get_credentials()
+    ## to use DefaultAzureCredential, uncomment above and uncomment the line after
+    # credentials = DefaultAzureCredential()
+
+    subscription_id = SUBSCRIPTION_ID
+
     anf_client = NetAppManagementClient(
         credentials, subscription_id)
 
@@ -265,8 +276,8 @@ def run_example():
     SUBNET_ID = '/subscriptions/{}/resourceGroups/{}/providers/Microsoft.Network/virtualNetworks/{}/subnets/{}'.format(
         subscription_id, VNET_RESOURCE_GROUP_NAME, VNET_NAME, SUBNET_NAME)
 
-    result = resource_exists(resources_client, 
-        SUBNET_ID, 
+    result = resource_exists(resources_client,
+        SUBNET_ID,
         VIRTUAL_NETWORKS_SUBNET_API_VERSION)
 
     if not result:
@@ -287,7 +298,7 @@ def run_example():
                 account.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Creating a Capacity Pool
@@ -306,7 +317,7 @@ def run_example():
                        .format(capacity_pool.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Creating a Volume
@@ -343,7 +354,7 @@ def run_example():
                        .format(volume.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Creating a snapshot
@@ -367,14 +378,12 @@ def run_example():
             .format(snapshot.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Creating a new volume from snapshot
     #
-    # Note: SnapshotId is not the actual resource Id of the snapshot, this
-    # value is the unique identifier (guid) of the snapshot, represented
-    # by the SnapshotId instead.
+    # Note: SnapshotId is the actual resource Id of the snapshot
     console_output('Creating New Volume from Snapshot ...')
     volume_from_snapshot = None
     try:
@@ -386,14 +395,14 @@ def run_example():
                                                            account.name,
                                                            pool_name,
                                                            volume,
-                                                           snapshot.snapshot_id,
+                                                           snapshot.id,
                                                            new_volume_name)
 
         console_output('\tNew volume from snapshot successfully created, resource id: {}'.format(
             volume_from_snapshot.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Updating a Capacity Pool
@@ -403,8 +412,8 @@ def run_example():
         sample_utils.get_bytes_in_tib(capacity_pool.size),
         new_capacity_pool_size_tib))
     try:
-        capacity_pool_patch = CapacityPoolPatch(location=capacity_pool.location,
-                                                size=sample_utils.get_tib_in_bytes(new_capacity_pool_size_tib))
+        poolPatchProperties = PoolPatchProperties(size=sample_utils.get_tib_in_bytes(new_capacity_pool_size_tib))
+        capacity_pool_patch = CapacityPoolPatch(location=capacity_pool.location, properties=poolPatchProperties)
 
         capacity_pool = anf_client.pools.begin_update(RESOURCE_GROUP_NAME,
                                                 account.name,
@@ -415,7 +424,7 @@ def run_example():
             sample_utils.get_bytes_in_tib(capacity_pool.size), capacity_pool.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Volume updates: resize and adding a new export policy
@@ -443,16 +452,22 @@ def run_example():
             rules=rule_list)
 
     if export_policies_patch is None:
-        volume_patch = VolumePatch(
-            location=volume.location,
+        volume_patch_properties = VolumePatchProperties(
             service_level=volume.service_level,
-            usage_threshold=sample_utils.get_tib_in_bytes(new_volume_size_tib))
-    else:
+            usage_threshold=sample_utils.get_tib_in_bytes(new_volume_size_tib)
+        )
         volume_patch = VolumePatch(
-            location=volume.location,
+            properties=volume_patch_properties,
+)
+    else:
+        volume_patch_properties = VolumePatchProperties(
             service_level=volume.service_level,
             usage_threshold=sample_utils.get_tib_in_bytes(new_volume_size_tib),
-            export_policy=export_policies_patch)
+            export_policy=export_policies_patch
+            )
+        volume_patch = VolumePatch(
+            properties=volume_patch_properties,
+            )
 
     try:
         updated_volume = anf_client.volumes.begin_update(RESOURCE_GROUP_NAME,
@@ -468,7 +483,7 @@ def run_example():
                                updated_volume.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Retrieving resources
@@ -488,7 +503,7 @@ def run_example():
                                    retrieved_account.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Getting a single ANF Account
@@ -501,7 +516,7 @@ def run_example():
             retrieved_account.name, retrieved_account.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Capacity Pools
@@ -521,7 +536,7 @@ def run_example():
 
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Getting a single capacity pool
@@ -536,7 +551,7 @@ def run_example():
             retrieved_pool.name, retrieved_pool.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Volumes
@@ -558,7 +573,7 @@ def run_example():
 
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Getting a single volume
@@ -575,7 +590,7 @@ def run_example():
             retrieved_volume.name, retrieved_volume.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Snapshots
@@ -599,7 +614,7 @@ def run_example():
 
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Getting a single snapshot
@@ -618,7 +633,7 @@ def run_example():
             retrieved_snapshot.name, retrieved_snapshot.id))
     except AzureError as ex:
         console_output(
-            'An error ocurred. Error details: {}'.format(ex.message))
+            'An error occurred. Error details: {}'.format(ex.message))
         raise
 
     # Cleaning up. This process needs to start the cleanup from the innermost
@@ -650,7 +665,7 @@ def run_example():
             console_output('\t\tDeleted Snapshot: {}'.format(snapshot.id))
         except AzureError as ex:
             console_output(
-                'An error ocurred. Error details: {}'.format(ex.message))
+                'An error occurred. Error details: {}'.format(ex.message))
             raise
 
         # Cleaning up volumes
@@ -672,7 +687,7 @@ def run_example():
                 console_output('\t\tDeleted Volume: {}'.format(volume_id))
         except AzureError as ex:
             console_output(
-                'An error ocurred. Error details: {}'.format(ex.message))
+                'An error occurred. Error details: {}'.format(ex.message))
             raise
 
         # Cleaning up Capacity Pool
@@ -690,7 +705,7 @@ def run_example():
                 '\t\tDeleted Capacity Pool: {}'.format(capacity_pool.id))
         except AzureError as ex:
             console_output(
-                'An error ocurred. Error details: {}'.format(ex.message))
+                'An error occurred. Error details: {}'.format(ex.message))
             raise
 
         # Cleaning up Account
@@ -701,7 +716,7 @@ def run_example():
             console_output('\t\tDeleted Account: {}'.format(account.id))
         except AzureError as ex:
             console_output(
-                'An error ocurred. Error details: {}'.format(ex.message))
+                'An error occurred. Error details: {}'.format(ex.message))
             raise
 
 
